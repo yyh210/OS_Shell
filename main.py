@@ -105,7 +105,7 @@ class RCB(object):
         self.remain += num
 
 
-class YShell(Thread):
+class YShell():
     def __init__(self):
         Thread.__init__(self)
         self.cmd_set = {'cr': self.cr,
@@ -144,6 +144,7 @@ class YShell(Thread):
                     cmd = user_in.pop(0)
                     parameters = user_in
                     self.__execute(cmd, parameters)
+                f.close()
             else:
                 self.__execute(cmd, parameters)
 
@@ -267,9 +268,13 @@ class YShell(Thread):
             rcb = self.__get_CB(self.resources, rid, 'rcb')
             rcb.release(pcb)  # update both pcb and rcb
         pcb.delete()
+
         self.__kill_tree(pcb.son)
         if pcb.son is not None:
-            self.__kill_tree(pcb.son.brother)
+            tmp = pcb.son.brother
+            while tmp is not None:
+                self.__kill_tree(tmp)
+                tmp = tmp.brother
 
     def __get_CB(self, cbList, id, t):
         res = None
@@ -383,17 +388,6 @@ class YShell(Thread):
         for i in del_list:
             del self.BL[i]
 
-        # for rcb in self.resources:
-        #     for pid in rcb.blocked:
-        #         pcb = self.__get_CB(self.BL, pid, t='pcb')
-        #         req_num = pcb.blocked_res[rcb.rid]
-        #         if req_num <= rcb.remain:  # wake up pcb
-        #             rcb.insert(pcb.pid, req_num)
-        #             pcb.insert(rcb.rid, req_num)
-        #             del pcb.blocked_res[rcb.rid]
-        #             if len(pcb.blocked_res.keys()) == 0:
-        #                 pass
-
     def to(self, par):
         pNow = self.get_runningP()
         if pNow.pid == 0:
@@ -442,7 +436,6 @@ class YShell(Thread):
 
     def get_runningP(self):  # running 放在队头
         p = None
-        priHigh = -1
         for pri in range(2, -1, -1):
             if self.RL[pri] is not None:
                 if self.RL[pri].st == 'running':
@@ -490,7 +483,6 @@ if __name__ == "__main__":
     t = Timer(s=s, interval=2)
     print("Process init is already running\nUse 'exit' command to exit")
     try:
-        s.start()
-        t.start()
+        s.run()
     except KeyboardInterrupt as e:
         print('\b\b\b\b\b\b\b\b\b\bShell is terminated', end='')
