@@ -31,10 +31,11 @@ class PCB(object):
         if rid not in self.occupied:
             self.occupied.append(rid)
 
-    def delete(self, head=None):
+    def delete(self):
         flag = 0
+        head = self.sl
         if self.st != 'blocked':
-            if head is None:  # not first
+            if self.pPre is not None:  # not first
                 self.pPre.pNext = self.pNext
                 if self.pNext is not None:
                     self.pNext.pPre = self.pPre
@@ -128,13 +129,9 @@ class YShell(Thread):
             资源初始化， 启动init进程
         '''
 
-    def __clock(self):
-        time.sleep('2')
-
     def run(self):
         flag = True
         while (flag):
-            start_time = time.time()
             r_user_in = input('yyh@shell>')
 
             user_in = r_user_in.strip().split()  # 默认空白符分割， 有点牛逼哦
@@ -211,7 +208,6 @@ class YShell(Thread):
             pNow.st = 'ready'
 
     def de(self, par):
-
         del_pid = self.__get_pid(par[0])
         for pri in [2, 1]:
             tmp = self.RL[pri]
@@ -223,8 +219,11 @@ class YShell(Thread):
                     else:
                         tmp.parent.son = None
                     self.__kill_tree(tmp)
+                    self.__wake()
+                    self.schedule()
                     return
                 tmp = tmp.pNext
+
         # in blocked list
         for bp in self.BL:
             if bp.pid == del_pid:
@@ -240,6 +239,8 @@ class YShell(Thread):
 
     def __get_forward_brother(self, fpcb: PCB, son: PCB):
         forward_son = fpcb.son
+        if fpcb is None or son is None:
+            return
         if son.pid == forward_son.pid:
             return None
         while forward_son.brother.pid != son.pid:
@@ -265,13 +266,7 @@ class YShell(Thread):
         for rid in pcb.occupied:  # delete resource
             rcb = self.__get_CB(self.resources, rid, 'rcb')
             rcb.release(pcb)  # update both pcb and rcb
-
-        if pcb.st == "blocked":  # delete pcb
-            pcb.delete(self.BL)
-        elif pcb.pPre is None:  # first element
-            pcb.delete(self.RL)
-        else:
-            pcb.delete()
+        pcb.delete()
         self.__kill_tree(pcb.son)
         if pcb.son is not None:
             self.__kill_tree(pcb.son.brother)
@@ -488,7 +483,6 @@ class Timer(Thread):
             if time.time() - self.start_time - self.interval > 0:
                 self.start_time = time.time()
                 s.to([])
-
 
 
 if __name__ == "__main__":
