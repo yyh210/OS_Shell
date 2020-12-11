@@ -1,3 +1,7 @@
+import time
+from threading import Thread
+
+
 class PCB(object):
     def __init__(self, pid, st, sl, priority, pName=None, parent=None, son=None):
         self.pid = pid
@@ -100,8 +104,9 @@ class RCB(object):
         self.remain += num
 
 
-class YShell(object):
+class YShell(Thread):
     def __init__(self):
+        Thread.__init__(self)
         self.cmd_set = {'cr': self.cr,
                         'de': self.de,
                         'req': self.req,
@@ -118,15 +123,20 @@ class YShell(object):
         init = PCB(self.pCnt, 'running', self.RL, 0, 'init', None)
         self.pCnt += 1
         init.sl[init.priority] = init
+        self.flag = True
         '''
             资源初始化， 启动init进程
         '''
 
+    def __clock(self):
+        time.sleep('2')
+
     def run(self):
         flag = True
-        print("Process init is already running\nUse 'exit' command or press Ctrl+C to exit")
         while (flag):
+            start_time = time.time()
             r_user_in = input('yyh@shell>')
+
             user_in = r_user_in.strip().split()  # 默认空白符分割， 有点牛逼哦
             cmd = user_in.pop(0)
             parameters = user_in
@@ -392,7 +402,6 @@ class YShell(object):
     def to(self, par):
         pNow = self.get_runningP()
         if pNow.pid == 0:
-            print('The init process can \' be terminated')
             return
         # pNow can use system call so it must be a running process.
         if pNow.pNext is None:  # exit
@@ -432,6 +441,7 @@ class YShell(object):
             print("Parameters error")
 
     def exit(self, par):
+        self.flag = False
         print('Shell is terminated', end='')
         exit()
 
@@ -466,9 +476,27 @@ class YShell(object):
         return res
 
 
+class Timer(Thread):
+    def __init__(self, interval, s: YShell):
+        Thread.__init__(self)
+        self.interval = interval
+        self.start_time = time.time()
+        self.s = s
+
+    def run(self) -> None:
+        while s.flag:
+            if time.time() - self.start_time - self.interval > 0:
+                self.start_time = time.time()
+                s.to([])
+
+
+
 if __name__ == "__main__":
     s = YShell()
+    t = Timer(s=s, interval=2)
+    print("Process init is already running\nUse 'exit' command to exit")
     try:
-        s.run()
+        s.start()
+        t.start()
     except KeyboardInterrupt as e:
         print('\b\b\b\b\b\b\b\b\b\bShell is terminated', end='')
