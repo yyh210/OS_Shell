@@ -82,6 +82,7 @@ class RCB(object):
 
     def release(self, pcb: PCB, num=None):
         pid = pcb.pid
+        del_list = []
         if num is None:
             num = self.occupy_list[pid]
         if self.occupy_list[pid] == num:
@@ -105,9 +106,8 @@ class RCB(object):
         self.remain += num
 
 
-class YShell():
+class YShell(object):
     def __init__(self):
-        Thread.__init__(self)
         self.cmd_set = {'cr': self.cr,
                         'de': self.de,
                         'req': self.req,
@@ -133,7 +133,6 @@ class YShell():
         flag = True
         while (flag):
             r_user_in = input('yyh@shell>')
-
             user_in = r_user_in.strip().split()  # 默认空白符分割， 有点牛逼哦
             cmd = user_in.pop(0)
             parameters = user_in
@@ -162,14 +161,18 @@ class YShell():
             print("Input is illegal. Please try again.")
             return
         pName = par[0]
-        priority = int(par[1])
+        try:
+            priority = int(par[1])
+        except Exception as e:
+            print('Priority is not legal')
+            return
         if priority not in [0, 1, 2]:
             print("Priority is illegal. Please try again.")
             return
+
         fPro = self.get_runningP()
         newP = PCB(self.pCnt, 'ready', self.RL, priority, pName, fPro)
         self.pCnt += 1
-
         self.__generate_tree(fPro, newP)
         if self.RL[newP.priority] is None:
             self.RL[newP.priority] = newP
@@ -191,7 +194,7 @@ class YShell():
             tmp.brother = pcb
 
     def schedule(self):
-        pNow = self.get_runningP()  # running/ready process
+        pNow = self.get_runningP()  # running process now
         pHigh = None
         for pri in range(2, -1, -1):
             if self.RL[pri] is not None:
@@ -218,7 +221,7 @@ class YShell():
                     if fbro is not None:
                         fbro.brother = tmp.brother
                     else:
-                        tmp.parent.son = None
+                        tmp.parent.son = tmp.brother
                     self.__kill_tree(tmp)
                     self.__wake()
                     self.schedule()
@@ -240,7 +243,7 @@ class YShell():
 
     def __get_forward_brother(self, fpcb: PCB, son: PCB):
         forward_son = fpcb.son
-        if fpcb is None or son is None:
+        if forward_son is None or son is None:
             return
         if son.pid == forward_son.pid:
             return None
@@ -264,7 +267,7 @@ class YShell():
     def __kill_tree(self, pcb: PCB):
         if pcb is None:
             return
-        for rid in pcb.occupied:  # delete resource
+        for rid in pcb.occupied.copy():  # delete resource
             rcb = self.__get_CB(self.resources, rid, 'rcb')
             rcb.release(pcb)  # update both pcb and rcb
         pcb.delete()
@@ -319,7 +322,6 @@ class YShell():
             # relink RB. pNow at head
             if pNow.pNext is not None:
                 pNow.pNext.pPre = None
-            self.RL[pNow.priority] = pNow.pNext
             pNow.pPre = None
             pNow.pNext = None
             self.BL.append(pNow)  # save pointer for list block
